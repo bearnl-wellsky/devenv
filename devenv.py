@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 import boto3
 import configparser
 from botocore.exceptions import ClientError
@@ -8,6 +9,11 @@ from git import Repo
 
 def setup_claire_amplify(config, branch: str, env_name: str,
     bretha_graphql_endpoint: str, shared_data_with: str):
+    assert branch, f'Branch is not set'
+    assert env_name, f'Environment name is not set'
+    assert bretha_graphql_endpoint, f'Bretha graphql endpoint is not set'
+    assert shared_data_with, f'Shared data with is not set'
+
     print('Creating claire Amplify environment', env_name)
     prod_config = config['claire']
 
@@ -38,7 +44,7 @@ def setup_claire_amplify(config, branch: str, env_name: str,
         print(f"Call to the Amplify Console throw an exception: {e}")
         return
 
-    response = client.start_job(
+    client.start_job(
         appId=prod_config['app_id'],
         branchName=branch,
         jobType="RELEASE",
@@ -50,6 +56,9 @@ def setup_claire_amplify(config, branch: str, env_name: str,
 
 
 def setup_wellsky_apps_amplify(config, branch: str, env_name: str):
+    assert branch, f'Branch is not set'
+    assert env_name, f'Environment name is not set'
+
     print('Creating wellsky apps branch', env_name)
     prod_config = config['wellsky-apps']
 
@@ -117,6 +126,9 @@ def setup_deployment_bucket(stage):
 
 
 def remove_amplify(config, product, env_name: str):
+    assert product, f'Product is not set'
+    assert env_name, f'Environment name is not set'
+
     print('Removing branch from amplify', env_name)
     client = boto3.client("amplify")
     try:
@@ -133,6 +145,10 @@ def remove_amplify(config, product, env_name: str):
 def setup_git(config: configparser.ConfigParser, product: str, branch_name: str,
     no_create=False, ignore_non_existing=False, reset_only=False):
     path = config[product]['path']
+    assert Path.exists(path), f'Path {path} does not exist'
+    assert product, f'Product is not set'
+    assert branch_name, f'Branch name is not set'
+
     print('Setting up git for', product, 'in', path)
     repo = Repo(path)
     assert not repo.bare
@@ -191,7 +207,7 @@ if __name__ == '__main__':
     p_jira.add_argument('--new', action='store_true', help='Create new Amplify environment')
     args = parser.parse_args()
 
-    if args.ticket:
+    if 'ticket' in args and args.ticket:
         args.local_only = True
         args.branch = f'issue/{args.ticket}'
 
@@ -207,7 +223,7 @@ if __name__ == '__main__':
             exit(0)
 
 
-    if not args.remote_only:
+    if not args.remote_only and args.branch:
         if args.claire:
             setup_git(config, 'claire', args.branch, args.local_only)
         if args.wellsky_apps:
